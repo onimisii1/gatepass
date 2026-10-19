@@ -8,17 +8,10 @@ import paymentRoutes from "./routes/payments.js";
 
 const app = express();
 
-// Only our own front end (and local development) may call this API from a browser.
-const APP_URL = process.env.APP_URL || "http://localhost:5173";
-const allowedOrigins = new Set([new URL(APP_URL).origin, "http://localhost:5173"]);
-app.use(
-  cors({
-    origin(origin, done) {
-      if (!origin || allowedOrigins.has(origin)) return done(null, true);
-      done(new Error(`Origin ${origin} is not allowed`));
-    },
-  })
-);
+// Any website may call this API from a browser. That's safe here because
+// logins use a token in the Authorization header, not cookies, so another
+// site can't act as a logged-in user without that user's token.
+app.use(cors());
 
 app.use(express.json({ limit: "100kb" }));
 
@@ -39,7 +32,6 @@ app.use((err, req, res, next) => {
   if (err.code === "22P02") return res.status(404).json({ error: "Not found." }); // malformed id
   if (err.code === "23505") return res.status(409).json({ error: "That already exists." });
   if (err.type === "entity.parse.failed") return res.status(400).json({ error: "Invalid JSON." });
-  if (String(err.message).startsWith("Origin ")) return res.status(403).json({ error: err.message });
   console.error(err);
   res.status(500).json({ error: "Something went wrong on our side." });
 });
